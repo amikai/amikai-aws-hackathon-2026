@@ -9,7 +9,7 @@ const POSES: Record<StoryStep, { x: number; y: number; sit?: boolean }> = {
   SIT_TOGETHER: { x: 780, y: 575, sit: true },
   GROUNDING: { x: 500, y: 545 },
   PLAN_RECALL: { x: 880, y: 530 },
-  RADIO_EXPLORE: { x: 1060, y: 545 },
+  RADIO_EXPLORE: { x: 960, y: 545 },
   FOOTPRINT_EXPLORE: { x: 480, y: 600, sit: true },
   TIMESCALE: { x: 800, y: 545 },
   REFLECTION: { x: 800, y: 545 },
