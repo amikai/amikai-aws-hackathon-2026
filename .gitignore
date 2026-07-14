@@ -1,0 +1,8 @@
+# OS
+.DS_Store
+
+# Hackathon data package (large raw data, not version-controlled)
+/Delivery_Hackathon_DataPackage_20260624/
+
+# prototype_t (not version-controlled)
+/prototype_t/
