@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useState } from "react";
 import Scene from "@/components/scene/Scene";
+import DialoguePanel from "@/components/ui/DialoguePanel";
 import SimBadge from "@/components/ui/SimBadge";
 import { experienceReducer, initialState } from "@/lib/experience-machine";
 
@@ -31,6 +32,7 @@ export default function Home() {
       >
         {state.market === "STORM" ? "外面：風雨" : "外面：平靜"}
       </button>
+      <DialoguePanel state={state} dispatch={dispatch} />
     </main>
   );
 }
