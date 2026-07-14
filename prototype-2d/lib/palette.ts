@@ -1,0 +1,16 @@
+export const palette = {
+  cream: "#FBF7EF",
+  beige: "#EFE4D3",
+  sage: "#A9BFA1",
+  skyCalm: "#DCE9F0",
+  skyStorm: "#4E6478",
+  amber: "#F0B96B",
+  coral: "#E9A493",
+  ink: "#5B5348",
+  wall: "#F4EDE0",
+  floor: "#E3D5BF",
+  wood: "#C9A87C",
+  woodDark: "#B08F63",
+  rain: "#A9C0D0",
+  footprint: "#8FA5B5",
+} as const;
