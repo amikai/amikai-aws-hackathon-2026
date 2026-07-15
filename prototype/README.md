@@ -1,20 +1,31 @@
 # 一小角 · 茶席（Isometric 2.5D）
 
-Web 原生**等距（isometric）**溫暖茶室：可走動、可泡抹茶。
+Web 原生**等距（isometric）**溫暖茶室。互動刻意簡化：點擊熱區，不做自由移動與碰撞。
 
 - 引擎：**Phaser 3** + Vite
-- 美術方向：對齊參考圖的 **isometric pixel / 精緻 2.5D 室內**（斜 45°、暖木色、家具密度高）
-- 場景圖：`public/assets/iso/tea-room.jpg`（依參考風格重製的茶室）
-- 蒸汽：Kenney Smoke Particles（CC0）
-- 參考：`docs/references/pixel-style-office.png`
+- 場景圖：`public/assets/iso/tea-room.jpg` / `tea-room-rainy.jpg`
+- 晴／雨：每次進入隨機
 
-## 操作
+## 目前狀態（精簡版）
 
-| 按鍵 | 作用 |
-|------|------|
-| WASD / 方向鍵 | 走動 |
-| E | 互動 |
-| 按住 E | 刷茶（進度走開後保留） |
+| 有 | 沒有（刻意砍） |
+|----|----------------|
+| 整張房間圖（晴／雨） | 角色行走 / spritesheet |
+| 點擊熱區：茶席、收音機、書櫃 | Arcade 物理、碰撞 box |
+| UI 標題／提示 | walk poly、點地板移動 |
+
+角色素材仍在 `public/assets/character/`，之後若要「固定位置 idle」可再掛回，**不做走格子**。
+
+## 為什麼這樣簡化
+
+Doc 的核心是 **8 格 storyboard（對話 + 點物件探索）**，不是 RPG。
+有限的幾張圖最適合：
+
+1. 背景＝整張插畫  
+2. 熱區＝隱形 click zone（對齊家具）  
+3. 流程＝UI 對話狀態機  
+
+碰撞與 depth-sort 需要分層切圖 + 角色移動，成本高、demo 收益低。
 
 ## 啟動
 
@@ -24,8 +35,12 @@ npm install
 npm run dev
 ```
 
-瀏覽器打開終端機顯示的 Local URL（通常是 http://localhost:5173）。
+## 素材對應 doc
 
-## 專案位置
-
-本倉庫的**唯一 prototype** 目錄為 `prototype/`（由 `prototype-cozy-2d` 更名；其他 prototype 目錄已移除）。
+| 房間物件 | 資料意義（doc） | 現在 |
+|----------|-----------------|------|
+| 窗外晴／雨 | CALM / STORM | 兩張圖隨機 |
+| 茶席 | 安定、熱飲 | hotspot |
+| 收音機 | 論壇聲量 | hotspot |
+| 書櫃 | 日記／路線 | hotspot |
+| 角色小伴 | 陪伴、呼吸 | 暫不顯示 |

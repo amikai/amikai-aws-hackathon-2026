@@ -1,5 +1,7 @@
 import Phaser from "phaser";
+import { BootScene } from "./game/BootScene";
 import { RoomScene } from "./game/RoomScene";
+import { UIScene } from "./game/UIScene";
 import "./style.css";
 
 const parent = document.querySelector<HTMLDivElement>("#app");
@@ -17,10 +19,11 @@ new Phaser.Game({
   backgroundColor: "#1a1410",
   pixelArt: false,
   antialias: true,
-  roundPixels: false,
+  roundPixels: true,
+  // No physics — point-and-click room, not free-roam.
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [RoomScene],
+  scene: [BootScene, RoomScene, UIScene],
 });
