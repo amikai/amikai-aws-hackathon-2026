@@ -69,17 +69,17 @@ CSV 資料（僅 0050 需要的欄位/整年資料）在後端伺服器啟動時
   "recent_events": [
     {
       "date": "20250102",
-      "beat": "ground",
-      "choice": "worried",
-      "fact": "外資買賣超 -7070.6 張",
+      "beat": "feet",
+      "choice": "next",
+      "fact": "外資買賣超 -7070.6 張（賣超），已連續 3 天同方向賣超",
       "text_excerpt": "法人今天悄悄往外走了一步..."
     },
     {
       "date": "20250103",
       "beat": "plan",
-      "choice": "stay_calm",
-      "fact": "外資買賣超 +847.9 張（轉買）",
-      "text_excerpt": "腳印今天轉了個方向，往屋裡走回來了。"
+      "choice": "next",
+      "fact": "使用者的定期投資計畫：每月10日投入新台幣5,000元",
+      "text_excerpt": "書櫃那邊的路線，我們依然約好了。"
     }
   ],
   "updated_at": "2026-07-16T08:12:00Z"
@@ -90,7 +90,7 @@ CSV 資料（僅 0050 需要的欄位/整年資料）在後端伺服器啟動時
 |---|---|
 | `current_date` | 本場次隨機抽到、用來查 CSV 的交易日 |
 | `main_index` | 玩家目前跑到 8-beat 主線的第幾步，跨場次接續 |
-| `recent_events` | 只保留**最近 N 天**（預設 N=5）的完整事件，含玩家實際選擇、當天確定性事實、生成文字摘錄。超過 N 筆時，把最舊的一筆從陣列移除。 |
+| `recent_events` | 只保留**最近 N 天**（預設 N=5）的完整事件，含玩家實際選擇、當天確定性事實（**壓縮成單行文字**，供下次 prompt 當記憶用，與回傳給前端的 `FactBlock` 結構是兩回事）、生成文字摘錄。超過 N 筆時，把最舊的一筆從陣列移除。 |
 | `summary` | 被擠出 `recent_events` 的舊事件，濃縮成一句自然語言記憶摘要，避免 prompt 隨天數增加無限變長 |
 
 **摘要更新時機：** 不額外多打一次 Bedrock。在每次玩到 `diary`（日記）beat 時，用 **Structured Output** 讓 Sonnet 4.6 一次回傳兩個欄位：`diary_text`（要顯示的日記台詞）與 `updated_summary`（把這次事件併入摘要後的新版本），與台詞生成同一次 API 呼叫完成。
@@ -113,7 +113,7 @@ CSV 資料（僅 0050 需要的欄位/整年資料）在後端伺服器啟動時
   3. 用 `promptBuilder` 組出完整 prompt（見第 8 節）
   4. 呼叫 `us.anthropic.claude-sonnet-4-6`；若 `beat === "diary"`，改用 Structured Output 要求回傳 `{diary_text, updated_summary}`
   5. 更新 DynamoDB：把本次事件塞進 `recent_events`（超過 N 筆丟最舊）、更新 `main_index`；`diary` beat 額外覆寫 `summary`
-- 回傳：`{ text, fact }` — `fact` 是第 2 步算出的**人類可讀事實字串**（非 LLM 生成），前端直接塞進既有 `DialoguePayload.fact`
+- 回傳：`{ text, fact }` — `fact` 是第 2 步算出的**確定性事實**，型別為 `story.ts` 既有的 `FactBlock`（`{title: string, lines: string[]}`，非 LLM 生成、無 fact 的 beat 則為 `undefined`），前端直接塞進既有 `DialoguePayload.fact`
 - 失敗（Bedrock 逾時／`AccessDeniedException`／限流／DynamoDB 錯誤）→ 回 HTTP 500 並帶錯誤訊息文字
 
 選項按鈕的文字與 id 完全留在前端 `story.ts` 的 `DIALOGUE[step].choices`，後端不接觸，維持 API 輕薄。
@@ -135,26 +135,31 @@ CSV 資料（僅 0050 需要的欄位/整年資料）在後端伺服器啟動時
 
 ### 8.2 每個 beat 的敘事目標與事實來源
 
+**修正說明：** 依實際 `prototype/src/game/story.ts` 的 `DIALOGUE`／`MAIN_ORDER` 內容核對後，beat 對應的資料來源與先前草稿不同——法人動向實際對應的是 `feet` beat（既有文案「門口方向，像是有人連續往外走了幾天」對應 `DEMO.institutionalSellLots`／`institutionalSellDays`），`scale` beat 對應的是週報酬率與當日漲跌幅的兩個時間尺比較，`ground` beat 目前完全沒有 fact block。以下為修正後、與現有程式碼一致的對照表：
+
 | beat | 敘事目標 | 事實來源 |
 |---|---|---|
 | `arrival` | 開場問候，帶入今天是隨機抽到的哪一天 | 無 |
-| `ground` | 描述法人腳印方向/連續性，引發好奇 | `02_Institutional_Trading_2025.csv` |
-| `radio` | 轉述論壇聲音的多空氛圍（強調非一致） | `10_Forum_Posts_Replies_Daily_Stats_2025.csv` |
+| `ground` | 延續現有文案語氣（不用一次看完，慢慢來），無新事實 | 無 |
 | `plan` | 回顧使用者的定期投資計畫，給予安定感 | 產品設定（每月10日投入5,000元，非 CSV） |
-| `feet`／`scale` | 價格波動、年線乖離的意象化描述 | `01_Price_Valuation_2025.csv`／`04_Distance_from_High_Low_Momentum_2025.csv` |
-| `reflect` | 引導使用者說出今天的感受 | 前幾個 beat 的事實彙總 |
-| `diary` | 把今天寫進日記，同時更新長期摘要（Structured Output） | 全部事實＋記憶 |
-| `rest` | 溫和收尾 | 無 |
+| `radio` | 轉述論壇聲音的多空氛圍（強調非一致） | `10_Forum_Posts_Replies_Daily_Stats_2025.csv` |
+| `feet` | 描述法人買賣超方向與連續性（既有「門口大腳印」意象） | `02_Institutional_Trading_2025.csv`（含連續同方向買賣超天數計算） |
+| `scale` | 比較「當日」與「近一週」兩個時間尺度的報酬，安定情緒 | `03_Return_Rate_2025.csv`（週報酬率）＋ `01_Price_Valuation_2025.csv`（當日漲跌幅） |
+| `reflect` | 引導使用者說出今天的感受，四個選項皆導向 `diary` | 無新事實，選項本身即為個人化訊號 |
+| `diary` | 把今天寫進日記，同時更新長期摘要（Structured Output） | 彙整 `feet`／`scale`／`radio` 的事實＋玩家在 `reflect` 選的選項 |
+| `sit_reply`／`rest` | 側支線（坐坐／道別），維持既有語氣 | 無 |
 
-### 8.3 User turn 組合範例（以 `ground` 為例）
+`fact` 的型別沿用 `story.ts` 既有的 `FactBlock = {title: string, lines: string[]}`，後端算出的事實要組成這個形狀直接回給前端，而不是單一字串；餵給 LLM prompt 時再把 `lines` 接成一段敘述文字。
+
+### 8.3 User turn 組合範例（以 `feet` 為例）
 
 ```
 今天模擬日期：2025/01/06
-這個 beat 的任務：描述法人腳印方向，引發好奇
-已確認事實：外資買賣超 +847.96 張（由賣轉買），法人持股比率 4.97%
-玩家上一步選擇：「worried」（對法人賣超感到擔心）
+這個 beat 的任務：描述法人買賣超方向與連續性
+已確認事實：外資買賣超 +847.96 張（由賣轉買），近期已連續 1 天同方向買超
+玩家上一步選擇：「next」
 長期記憶摘要：使用者對法人連續賣超感到擔心，但堅持定期投資計畫
-最近事件：[[1/2 ground: 賣超-7070張, 選擇worried], [1/3 plan: 選擇stay_calm]]
+最近事件：[[1/2 feet: 賣超7070.6張／連續3天賣超, 選擇next], [1/3 plan: 選擇next]]
 
 請生成股伴此刻要說的一句話。
 ```
