@@ -1,26 +1,37 @@
 import Phaser from "phaser";
 import { Companion } from "./Companion";
-import { COMPANION_BASE_SCALE, COMPANION_SIT } from "./roomData";
-import { DIALOGUE, QUIET_MS, type StoryStep } from "./story";
+import {
+  COMPANION_BASE_SCALE,
+  COMPANION_SIT,
+  GAZE_POINTS,
+} from "./roomData";
+import {
+  DIALOGUE,
+  MAIN_ORDER,
+  QUIET_MS,
+  type GazeTarget,
+  type StoryStep,
+} from "./story";
 
 /**
- * Shortest path:
- * ARRIVAL → sit/look reply → quiet (card hidden) → REST
+ * One tea room, 8-beat main path (gaze + dialogue + fact cards).
+ * Sit branch: arrival → sit → quiet → diary → rest.
  */
 export class RoomScene extends Phaser.Scene {
   private room!: Phaser.GameObjects.Image;
+  private gazeGfx!: Phaser.GameObjects.Graphics;
+  private gazeTween?: Phaser.Tweens.Tween;
 
   private layerScale = 1;
   private layerOffset = { x: 0, y: 0 };
   private layerSize = { w: 0, h: 0 };
 
   private weather: "sunny" | "rainy" = "sunny";
-  /** Demo storm path for sit-together mood. */
   private readonly forceWeather: "sunny" | "rainy" | null = "rainy";
-  private readonly rainChance = 0.35;
 
   private step: StoryStep = "arrival";
   private busy = false;
+  private mainIndex = 0;
 
   constructor() {
     super("RoomScene");
@@ -28,9 +39,7 @@ export class RoomScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.weather =
-      this.forceWeather ??
-      (Math.random() < this.rainChance ? "rainy" : "sunny");
+    this.weather = this.forceWeather ?? "rainy";
 
     this.cameras.main.setBackgroundColor(
       this.weather === "rainy" ? 0x0c1218 : 0x1a1410,
@@ -52,12 +61,14 @@ export class RoomScene extends Phaser.Scene {
     const sit = this.normToWorld(COMPANION_SIT.x, COMPANION_SIT.y);
     new Companion(this, sit.x, sit.y, COMPANION_BASE_SCALE * this.layerScale);
 
+    this.gazeGfx = this.add.graphics().setDepth(4);
+
     this.game.events.on("ui:choice", this.onChoice, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off("ui:choice", this.onChoice, this);
+      this.gazeTween?.stop();
     });
 
-    // Let the room settle, then greet.
     this.time.delayedCall(700, () => this.showStep("arrival"));
   }
 
@@ -67,9 +78,14 @@ export class RoomScene extends Phaser.Scene {
     this.step = step;
     this.busy = false;
     const d = DIALOGUE[step];
+    this.setGaze(d.gaze ?? "none");
+
     this.game.events.emit("ui:dialogue", {
       speaker: d.speaker ?? "小伴",
+      beat: d.beat,
+      beatTotal: d.beat != null ? 8 : undefined,
       text: d.text,
+      fact: d.fact,
       choices: d.choices,
     });
   }
@@ -83,31 +99,95 @@ export class RoomScene extends Phaser.Scene {
         return;
       }
       if (id === "look") {
-        this.showStep("look_reply");
+        this.mainIndex = 0;
+        this.showStep(MAIN_ORDER[0]);
         return;
       }
     }
 
-    // After either reply, sit quietly then rest.
-    if (
-      (this.step === "sit_reply" || this.step === "look_reply") &&
-      id === "continue"
-    ) {
-      this.enterQuietThenRest();
+    if (this.step === "sit_reply" && id === "quiet") {
+      this.enterQuietThen(() => this.showStep("diary"));
       return;
     }
 
-    if (this.step === "rest" && id === "again") {
-      this.showStep("arrival");
+    // Main path linear continues
+    if (id === "next") {
+      this.advanceMain();
+      return;
+    }
+
+    // Reflect four options — all land on diary
+    if (this.step === "reflect") {
+      this.showStep("diary");
+      return;
+    }
+
+    if (this.step === "diary" && id === "leave") {
+      this.enterQuietThen(() => this.showStep("rest"));
+      return;
+    }
+
+    if (this.step === "rest") {
+      if (id === "again") {
+        this.mainIndex = 0;
+        this.showStep("arrival");
+        return;
+      }
+      if (id === "sit_again") {
+        this.showStep("sit_reply");
+      }
     }
   };
 
-  /** Hide card → breathe with the room → closing line. */
-  private enterQuietThenRest(): void {
+  private advanceMain(): void {
+    const i = MAIN_ORDER.indexOf(this.step as (typeof MAIN_ORDER)[number]);
+    if (i < 0) return;
+    if (i >= MAIN_ORDER.length - 1) {
+      this.showStep("rest");
+      return;
+    }
+    this.mainIndex = i + 1;
+    this.showStep(MAIN_ORDER[this.mainIndex]);
+  }
+
+  private enterQuietThen(then: () => void): void {
     this.busy = true;
+    this.setGaze("none");
     this.game.events.emit("ui:hide");
     this.time.delayedCall(QUIET_MS, () => {
-      this.showStep("rest");
+      this.busy = false;
+      then();
+    });
+  }
+
+  // --- Gaze marker ---------------------------------------------------------
+
+  private setGaze(target: GazeTarget): void {
+    this.gazeTween?.stop();
+    this.gazeGfx.clear();
+    if (target === "none" || !(target in GAZE_POINTS)) return;
+
+    const g = GAZE_POINTS[target as keyof typeof GAZE_POINTS];
+    const p = this.normToWorld(g.x, g.y);
+    const r = g.radius * this.layerSize.w;
+
+    const state = { t: 0 };
+    this.gazeTween = this.tweens.add({
+      targets: state,
+      t: 1,
+      duration: 1600,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      onUpdate: () => {
+        this.gazeGfx.clear();
+        const pulse = 0.35 + state.t * 0.35;
+        const rr = r * (0.85 + state.t * 0.2);
+        this.gazeGfx.lineStyle(2.5, 0xf0e0c0, pulse);
+        this.gazeGfx.strokeCircle(p.x, p.y, rr);
+        this.gazeGfx.fillStyle(0xf5e6c8, 0.06 + state.t * 0.06);
+        this.gazeGfx.fillCircle(p.x, p.y, rr * 0.55);
+      },
     });
   }
 

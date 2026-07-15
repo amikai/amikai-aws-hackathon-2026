@@ -90,6 +90,21 @@ body {
   line-height: 1.4;
 }
 
+.dlg-beat {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: #e8e0d2;
+  color: #6a6258;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
 .dlg-body {
   margin: 0;
   color: #4a433a;
@@ -99,12 +114,50 @@ body {
   font-weight: 400;
 }
 
+.dlg-fact {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f3eee4;
+  border: 1px solid #e0d6c6;
+}
+
+.dlg-fact-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b5e4e;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.dlg-fact-list {
+  margin: 0;
+  padding-left: 1.1em;
+  color: #4a433a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.dlg-fact-list li + li {
+  margin-top: 2px;
+}
+
 /* Side-by-side choices */
 .dlg-choices {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   gap: 10px;
   margin-top: 16px;
+}
+
+.dlg-choices--wrap {
+  flex-wrap: wrap;
+}
+
+.dlg-choices--wrap .dlg-choice {
+  flex: 1 1 calc(50% - 5px);
+  min-width: calc(50% - 5px);
 }
 
 .dlg-choice {
