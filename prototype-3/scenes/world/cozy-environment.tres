@@ -1,0 +1,33 @@
+[gd_resource type="Environment" load_steps=3 format=3]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_cozy"]
+sky_top_color = Color(0.55, 0.72, 0.92, 1)
+sky_horizon_color = Color(0.92, 0.86, 0.78, 1)
+sky_curve = 0.08
+ground_bottom_color = Color(0.45, 0.55, 0.4, 1)
+ground_horizon_color = Color(0.75, 0.72, 0.62, 1)
+ground_curve = 0.12
+
+[sub_resource type="Sky" id="Sky_cozy"]
+sky_material = SubResource("ProceduralSkyMaterial_cozy")
+
+[resource]
+background_mode = 2
+sky = SubResource("Sky_cozy")
+ambient_light_source = 3
+ambient_light_color = Color(1.0, 0.93, 0.85, 1)
+ambient_light_sky_contribution = 0.65
+ambient_light_energy = 0.95
+tonemap_mode = 2
+ssao_enabled = true
+ssao_radius = 0.4
+ssao_intensity = 0.45
+glow_enabled = true
+glow_levels/2 = 0.4
+glow_levels/3 = 0.5
+glow_intensity = 0.6
+glow_bloom = 0.05
+adjustment_enabled = true
+adjustment_brightness = 1.02
+adjustment_contrast = 1.02
+adjustment_saturation = 1.05
