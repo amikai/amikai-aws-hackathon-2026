@@ -19,7 +19,7 @@ const BEAT_GOALS: Record<BeatId, string> = {
   feet: "描述法人買賣超方向與連續性",
   scale: "比較當日與近一週兩個時間尺度的報酬，安定情緒",
   reflect: "引導使用者說出今天的感受",
-  diary: "把今天寫進日記，同時更新長期記憶摘要",
+  diary: "把今天寫進日記；若使用者有親筆感受，如實納入，不要替他改寫情緒；同時更新長期記憶摘要",
   rest: "溫和地收尾這次的陪伴時光",
 };
 
@@ -35,8 +35,20 @@ function formatDate(date: string): string {
 function formatRecentEvents(state: UserState): string {
   if (state.recentEvents.length === 0) return "（尚無過去紀錄）";
   return state.recentEvents
-    .map((event) => `[${formatDate(event.date)} ${event.beat}: ${event.fact}, 選擇${event.choice ?? "無"}]`)
+    .map((event) => {
+      const feeling =
+        event.feeling && event.feeling.trim().length > 0
+          ? `，感受「${event.feeling.trim()}」`
+          : "";
+      return `[${formatDate(event.date)} ${event.beat}: ${event.fact}, 選擇${event.choice ?? "無"}${feeling}]`;
+    })
     .join(", ");
+}
+
+function formatFeeling(feeling: string | undefined): string {
+  const trimmed = feeling?.trim();
+  if (trimmed) return `使用者親筆感受：「${trimmed}」`;
+  return "使用者親筆感受：（未留下文字）";
 }
 
 export function buildBeatPrompt(
@@ -44,7 +56,8 @@ export function buildBeatPrompt(
   date: string,
   fact: FactBlock | undefined,
   state: UserState,
-  choice: string | undefined
+  choice: string | undefined,
+  feeling?: string
 ): PromptResult {
   const goal = BEAT_GOALS[beat];
   const factLine = `已確認事實：${factToSummaryLine(fact)}`;
@@ -52,15 +65,21 @@ export function buildBeatPrompt(
     ? `玩家上一步選擇：「${choice}」`
     : "（這是本次場次的第一步，玩家還沒做過選擇）";
 
+  const closing =
+    beat === "diary"
+      ? "請生成寫進共同日記的短文；若有親筆感受請如實納入，不要替使用者改寫或誇大情緒。"
+      : "請生成股伴此刻要說的一句話。";
+
   const user = [
     `今天模擬日期：${formatDate(date)}`,
     `這個 beat 的任務：${goal}`,
     factLine,
     choiceLine,
+    formatFeeling(feeling),
     `長期記憶摘要：${state.summary || "（尚無長期記憶）"}`,
     `最近事件：${formatRecentEvents(state)}`,
     "",
-    "請生成股伴此刻要說的一句話。",
+    closing,
   ].join("\n");
 
   return { system: SYSTEM_PROMPT, user };

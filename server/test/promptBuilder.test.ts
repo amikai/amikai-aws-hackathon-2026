@@ -48,4 +48,22 @@ describe("buildBeatPrompt", () => {
     const { user } = buildBeatPrompt("ground", "20250102", undefined, emptyState, undefined);
     expect(user).toContain("已確認事實：（本次無新事實）");
   });
+
+  it("includes the user's free-text feeling when provided", () => {
+    const { user } = buildBeatPrompt(
+      "diary",
+      "20250102",
+      undefined,
+      emptyState,
+      "note",
+      "有點擔心，但想先睡一覺"
+    );
+    expect(user).toContain("使用者親筆感受：「有點擔心，但想先睡一覺」");
+    expect(user).toContain("請生成寫進共同日記的短文");
+  });
+
+  it("marks feeling as absent when the user left no text", () => {
+    const { user } = buildBeatPrompt("diary", "20250102", undefined, emptyState, "note");
+    expect(user).toContain("使用者親筆感受：（未留下文字）");
+  });
 });

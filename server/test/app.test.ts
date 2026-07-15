@@ -6,6 +6,17 @@ import { FakeDocClient } from "./fakeDocClient";
 import { fakeBedrockClient } from "./fakeBedrockClient";
 import type { InvokeClientLike } from "../src/bedrockClient";
 
+describe("GET /ping", () => {
+  it("returns 200 for the ALB health check", async () => {
+    const dataset = loadFixtureDataset();
+    const app = createApp({ dataset, doc: new FakeDocClient(), bedrock: fakeBedrockClient("hi") });
+
+    const response = await request(app).get("/ping");
+
+    expect(response.status).toBe(200);
+  });
+});
+
 describe("POST /api/session/start", () => {
   it("returns a date from the available dataset, mainIndex 0, and visitCount 1 on first visit", async () => {
     const dataset = loadFixtureDataset();
@@ -60,6 +71,33 @@ describe("POST /api/beat", () => {
     const secondStart = await request(app).post("/api/session/start").send({});
 
     expect(secondStart.body.mainIndex).toBe(0);
+  });
+
+  it("persists the user's diary feeling into recent_events", async () => {
+    const dataset = loadFixtureDataset();
+    const doc = new FakeDocClient();
+    const app = createApp({
+      dataset,
+      doc,
+      bedrock: fakeBedrockClient(
+        JSON.stringify({ diary_text: "記下你的擔心了。", updated_summary: "擔心但願意觀察。" })
+      ),
+    });
+
+    await request(app).post("/api/session/start").send({});
+    const response = await request(app)
+      .post("/api/beat")
+      .send({ beat: "diary", choice: "note", feeling: "有點擔心，明天再說" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.text).toBe("記下你的擔心了。");
+
+    const { loadUserState } = await import("../src/memoryStore");
+    const saved = await loadUserState(doc);
+    expect(saved.summary).toBe("擔心但願意觀察。");
+    expect(saved.recentEvents).toHaveLength(1);
+    expect(saved.recentEvents[0].feeling).toBe("有點擔心，明天再說");
+    expect(saved.recentEvents[0].beat).toBe("diary");
   });
 
   it("returns HTTP 500 with an error message when Bedrock fails", async () => {

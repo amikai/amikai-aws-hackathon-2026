@@ -36,6 +36,8 @@ export interface RecentEvent {
   /** Compact single-line digest for memory/prompt reuse — not the FactBlock shown to the player. */
   fact: string;
   textExcerpt: string;
+  /** Optional free-text feeling the user left at diary (null when absent / non-diary beats). */
+  feeling?: string | null;
 }
 
 export interface UserState {
@@ -51,6 +53,8 @@ export interface UserState {
 export interface BeatRequestBody {
   beat: BeatId;
   choice?: string;
+  /** Optional free-text feeling, mainly for the diary beat. */
+  feeling?: string;
 }
 
 export interface BeatResponseBody {

@@ -22,6 +22,10 @@ export function createApp(deps: AppDependencies) {
   app.use(cors());
   app.use(express.json());
 
+  app.get("/ping", (_req, res) => {
+    res.status(200).send("ok");
+  });
+
   app.post("/api/session/start", async (_req, res) => {
     try {
       const existing = await loadUserState(doc);
@@ -43,11 +47,19 @@ export function createApp(deps: AppDependencies) {
   });
 
   app.post("/api/beat", async (req, res) => {
-    const { beat, choice } = req.body as BeatRequestBody;
+    const { beat, choice, feeling } = req.body as BeatRequestBody;
+    const feelingTrimmed = feeling?.trim() ? feeling.trim() : null;
     try {
       const state = await loadUserState(doc);
       const fact = computeFact(dataset, beat, state.currentDate);
-      const { system, user } = buildBeatPrompt(beat, state.currentDate, fact, state, choice);
+      const { system, user } = buildBeatPrompt(
+        beat,
+        state.currentDate,
+        fact,
+        state,
+        choice,
+        feelingTrimmed ?? undefined
+      );
 
       let text: string;
       let nextState = state;
@@ -66,6 +78,7 @@ export function createApp(deps: AppDependencies) {
         choice: choice ?? null,
         fact: factToSummaryLine(fact),
         textExcerpt: text.slice(0, 40),
+        feeling: beat === "diary" ? feelingTrimmed : null,
       });
 
       const beatIndex = MAIN_ORDER.indexOf(beat);
