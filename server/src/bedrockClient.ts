@@ -30,7 +30,7 @@ export async function generateBeatText(
 ): Promise<string> {
   const body = {
     anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 200,
+    max_tokens: 500,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: user }],
   };
@@ -59,7 +59,10 @@ export async function generateDiaryUpdate(
 ): Promise<DiaryUpdate> {
   const body = {
     anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 300,
+    // diary_text + updated_summary in Chinese, plus JSON schema overhead,
+    // was getting cut off mid-string at lower budgets and failing JSON.parse.
+    // Generous headroom since updated_summary keeps absorbing more history over time.
+    max_tokens: 1500,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     output_config: {
       format: {
