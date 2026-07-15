@@ -46,6 +46,22 @@ describe("POST /api/beat", () => {
     expect(secondStart.body.mainIndex).toBe(1);
   });
 
+  it("wraps mainIndex back to 0 after the diary beat (the last main-path step) completes", async () => {
+    const dataset = loadFixtureDataset();
+    const doc = new FakeDocClient();
+    const app = createApp({
+      dataset,
+      doc,
+      bedrock: fakeBedrockClient(JSON.stringify({ diary_text: "今天的日記。", updated_summary: "摘要。" })),
+    });
+
+    await request(app).post("/api/session/start").send({});
+    await request(app).post("/api/beat").send({ beat: "diary", choice: "note" });
+    const secondStart = await request(app).post("/api/session/start").send({});
+
+    expect(secondStart.body.mainIndex).toBe(0);
+  });
+
   it("returns HTTP 500 with an error message when Bedrock fails", async () => {
     const dataset = loadFixtureDataset();
     const doc = new FakeDocClient();

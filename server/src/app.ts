@@ -70,7 +70,10 @@ export function createApp(deps: AppDependencies) {
 
       const beatIndex = MAIN_ORDER.indexOf(beat);
       if (beatIndex >= 0) {
-        nextState.mainIndex = beatIndex + 1;
+        const next = beatIndex + 1;
+        // Wrap back to the start once the main path (ending at "diary") completes,
+        // so MAIN_ORDER[mainIndex] always stays in bounds for the next session.
+        nextState.mainIndex = next >= MAIN_ORDER.length ? 0 : next;
       }
       await saveUserState(doc, nextState);
 
