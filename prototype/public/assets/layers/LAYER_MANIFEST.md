@@ -1,6 +1,7 @@
-# Layer cut pack (recommended structure)
+# Layer cut pack
 
-See also: `docs/layer-cut-guide.md`
+Optional cut layers under `public/assets/layers/`.
+Current runtime uses full room images in `public/assets/iso/`.
 
 ```text
 layers/
@@ -8,15 +9,5 @@ layers/
   floor_tatami.png
   furniture_base.png
   props/
-    teapot.png
-    steam.png          ← animate separately
-    teacup.png
-    radio.png
-    bonsai_big.png
-    plants_small.png
-    hanging_plant.png
   foreground/
-    foreground_details.png
 ```
-
-Format: PNG + transparency. Names: lowercase_underscore.
