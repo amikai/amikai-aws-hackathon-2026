@@ -8,6 +8,15 @@ export type DialoguePayload = {
   text: string;
   fact?: FactBlock;
   choices?: ChoiceDef[];
+  /** Optional free-text field (e.g. diary feeling). */
+  allowInput?: {
+    placeholder: string;
+  };
+};
+
+export type ChoicePayload = {
+  id: string;
+  text?: string;
 };
 
 /**
@@ -19,6 +28,8 @@ export class UIScene extends Phaser.Scene {
   private speakerEl!: HTMLSpanElement;
   private bodyEl!: HTMLParagraphElement;
   private factEl!: HTMLDivElement;
+  private inputWrap!: HTMLDivElement;
+  private inputEl: HTMLTextAreaElement | null = null;
   private choicesEl!: HTMLDivElement;
 
   constructor() {
@@ -51,6 +62,7 @@ export class UIScene extends Phaser.Scene {
         <span class="dlg-speaker"></span>
         <p class="dlg-body"></p>
         <div class="dlg-fact" hidden></div>
+        <div class="dlg-input-wrap" hidden></div>
         <div class="dlg-choices"></div>
       </div>
     `;
@@ -60,6 +72,7 @@ export class UIScene extends Phaser.Scene {
     this.speakerEl = this.overlay.querySelector(".dlg-speaker")!;
     this.bodyEl = this.overlay.querySelector(".dlg-body")!;
     this.factEl = this.overlay.querySelector(".dlg-fact")!;
+    this.inputWrap = this.overlay.querySelector(".dlg-input-wrap")!;
     this.choicesEl = this.overlay.querySelector(".dlg-choices")!;
     this.overlay.hidden = true;
   }
@@ -89,6 +102,19 @@ export class UIScene extends Phaser.Scene {
       this.factEl.innerHTML = "";
     }
 
+    this.clearInput();
+    if (payload.allowInput) {
+      const ta = document.createElement("textarea");
+      ta.className = "dlg-input";
+      ta.rows = 2;
+      ta.maxLength = 200;
+      ta.placeholder = payload.allowInput.placeholder;
+      ta.setAttribute("aria-label", payload.allowInput.placeholder);
+      this.inputEl = ta;
+      this.inputWrap.replaceChildren(ta);
+      this.inputWrap.hidden = false;
+    }
+
     this.choicesEl.replaceChildren();
     const choices = payload.choices ?? [];
     this.choicesEl.dataset.count = String(choices.length);
@@ -100,7 +126,10 @@ export class UIScene extends Phaser.Scene {
       btn.className = c.primary ? "dlg-choice dlg-choice--primary" : "dlg-choice";
       btn.textContent = c.label;
       btn.addEventListener("click", () => {
-        this.game.events.emit("ui:choice", c.id);
+        const payload: ChoicePayload = { id: c.id };
+        const raw = this.inputEl?.value.trim();
+        if (raw) payload.text = raw;
+        this.game.events.emit("ui:choice", payload);
       });
       this.choicesEl.appendChild(btn);
     }
@@ -109,7 +138,18 @@ export class UIScene extends Phaser.Scene {
     this.overlay.classList.remove("dlg-enter");
     void this.overlay.offsetWidth;
     this.overlay.classList.add("dlg-enter");
+
+    if (this.inputEl) {
+      // Defer so the enter animation doesn't steal focus awkwardly.
+      this.time.delayedCall(50, () => this.inputEl?.focus());
+    }
   };
+
+  private clearInput(): void {
+    this.inputEl = null;
+    this.inputWrap.replaceChildren();
+    this.inputWrap.hidden = true;
+  }
 
   private hidePanel = () => {
     this.overlay.classList.remove("dlg-enter");
@@ -117,6 +157,7 @@ export class UIScene extends Phaser.Scene {
     this.choicesEl.replaceChildren();
     this.factEl.hidden = true;
     this.factEl.innerHTML = "";
+    this.clearInput();
   };
 }
 

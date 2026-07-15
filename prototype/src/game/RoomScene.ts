@@ -13,10 +13,12 @@ import {
   type StoryStep,
 } from "./story";
 import { startSession, getBeatDialogue } from "./apiClient";
+import type { ChoicePayload } from "./UIScene";
 
 /**
  * One tea room, 8-beat main path (gaze + dialogue + fact cards).
  * Sit branch: arrival → sit → quiet → diary → rest.
+ * Diary is two-phase: collect optional feeling → generate & save → leave.
  */
 export class RoomScene extends Phaser.Scene {
   private room!: Phaser.GameObjects.Image;
@@ -34,6 +36,9 @@ export class RoomScene extends Phaser.Scene {
   private busy = false;
   private mainIndex = 0;
   private serverMainIndex = 0;
+  /** Choice id from reflect / sit that led into diary. */
+  private pendingDiaryChoice?: string;
+  private diaryPhase: "input" | "result" = "input";
 
   constructor() {
     super("RoomScene");
@@ -86,6 +91,11 @@ export class RoomScene extends Phaser.Scene {
   // --- Story ---------------------------------------------------------------
 
   private showStep(step: StoryStep, choice?: string): void {
+    if (step === "diary") {
+      this.enterDiaryInput(choice);
+      return;
+    }
+
     this.step = step;
     this.busy = true;
     const d = DIALOGUE[step];
@@ -115,8 +125,61 @@ export class RoomScene extends Phaser.Scene {
       });
   }
 
-  private onChoice = (id: string) => {
+  /** Diary phase 1: local prompt + optional feeling, no backend call yet. */
+  private enterDiaryInput(choice?: string): void {
+    this.step = "diary";
+    this.diaryPhase = "input";
+    this.pendingDiaryChoice = choice;
+    this.busy = false;
+    const d = DIALOGUE.diary;
+    this.setGaze(d.gaze ?? "none");
+    this.game.events.emit("ui:dialogue", {
+      speaker: d.speaker ?? "小伴",
+      beat: d.beat,
+      beatTotal: 8,
+      text: d.text,
+      allowInput: {
+        placeholder: "想留一句話給未來的自己…（選填）",
+      },
+      choices: d.choices,
+    });
+  }
+
+  /** Diary phase 2: generate + persist with the user's feeling. */
+  private submitDiary(feeling?: string): void {
+    this.busy = true;
+    const d = DIALOGUE.diary;
+    getBeatDialogue("diary", this.pendingDiaryChoice, feeling)
+      .then((response) => {
+        this.diaryPhase = "result";
+        this.busy = false;
+        this.game.events.emit("ui:dialogue", {
+          speaker: d.speaker ?? "小伴",
+          beat: d.beat,
+          beatTotal: 8,
+          text: response.text,
+          fact: response.fact,
+          choices: [{ id: "leave", label: "今天先到這裡", primary: true }],
+        });
+      })
+      .catch((error: Error) => {
+        this.diaryPhase = "result";
+        this.busy = false;
+        this.game.events.emit("ui:dialogue", {
+          speaker: d.speaker ?? "小伴",
+          beat: d.beat,
+          beatTotal: 8,
+          text: error.message,
+          choices: [{ id: "leave", label: "今天先到這裡", primary: true }],
+        });
+      });
+  }
+
+  private onChoice = (payload: ChoicePayload | string) => {
     if (this.busy) return;
+
+    const id = typeof payload === "string" ? payload : payload.id;
+    const feeling = typeof payload === "string" ? undefined : payload.text;
 
     if (this.step === "arrival") {
       if (id === "sit") {
@@ -141,13 +204,18 @@ export class RoomScene extends Phaser.Scene {
       return;
     }
 
-    // Reflect four options — all land on diary
+    // Reflect four options — all land on diary input
     if (this.step === "reflect") {
       this.showStep("diary", id);
       return;
     }
 
-    if (this.step === "diary" && id === "leave") {
+    if (this.step === "diary" && this.diaryPhase === "input" && id === "write") {
+      this.submitDiary(feeling);
+      return;
+    }
+
+    if (this.step === "diary" && this.diaryPhase === "result" && id === "leave") {
       this.enterQuietThen(() => this.showStep("rest", id));
       return;
     }

@@ -158,17 +158,9 @@ export const DIALOGUE: Record<StoryStep, DialogueDef> = {
     beat: 8,
     speaker: "小伴",
     gaze: "none",
-    text: "今天我們只看了幾件事，已經很夠了。你的計畫還在這裡，我也會幫你記得。",
-    fact: {
-      title: "共同日記",
-      lines: [
-        DEMO.asOf,
-        `明天是原定投入日。${DEMO.symbol} 波動很大，論壇也變吵；多數發文仍是中性。`,
-        "法人連續三日賣超。",
-        "你感到擔心，選擇先把感受留下來，明天再確認。",
-      ],
-    },
-    choices: [cont("leave", "今天先到這裡")],
+    /** Shown before the user submits a feeling; result text comes from the backend. */
+    text: "今天我們看了幾件事，已經很夠了。想留一句感受給未來的自己嗎？（選填）",
+    choices: [cont("write", "寫進日記")],
   },
 
   rest: {

@@ -32,6 +32,10 @@ export function startSession(): Promise<SessionStartResponse> {
   return postJson<SessionStartResponse>("/api/session/start", {});
 }
 
-export function getBeatDialogue(beat: string, choice?: string): Promise<BeatResponse> {
-  return postJson<BeatResponse>("/api/beat", { beat, choice });
+export function getBeatDialogue(
+  beat: string,
+  choice?: string,
+  feeling?: string
+): Promise<BeatResponse> {
+  return postJson<BeatResponse>("/api/beat", { beat, choice, feeling });
 }

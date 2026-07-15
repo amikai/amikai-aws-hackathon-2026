@@ -38,6 +38,23 @@ describe("getBeatDialogue", () => {
     expect(result.text).toBe("法人今天悄悄往外走了一步。");
   });
 
+  it("posts feeling for the diary beat when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: "記下了。", fact: { title: "共同日記", lines: ["a"] } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getBeatDialogue("diary", "note", "有點擔心");
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual({
+      beat: "diary",
+      choice: "note",
+      feeling: "有點擔心",
+    });
+  });
+
   it("throws the server error message when the response is not ok", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
