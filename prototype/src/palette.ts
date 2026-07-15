@@ -1,0 +1,23 @@
+/** Shared cozy palette (aligned with product 2D prototype). */
+export const palette = {
+  cream: 0xfbf7ef,
+  beige: 0xefe4d3,
+  sage: 0xa9bfa1,
+  sky: 0xdce9f0,
+  amber: 0xf0b96b,
+  coral: 0xe9a493,
+  ink: 0x5b5348,
+  wall: 0xf4ede0,
+  floor: 0xe3d5bf,
+  floorDark: 0xd4c4a8,
+  wood: 0xc9a87c,
+  woodDark: 0xb08f63,
+  woodDeep: 0x8b6b4a,
+  shadow: 0x3d362f,
+  matcha: 0x7a9b6d,
+  matchaFoam: 0xc5d4b8,
+  tatami: 0xdcc9a0,
+  tatamiLine: 0xc9b48a,
+  paper: 0xf7f2e8,
+  glow: 0xffe6b8,
+} as const;
