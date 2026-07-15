@@ -12,6 +12,7 @@ import {
   type GazeTarget,
   type StoryStep,
 } from "./story";
+import { startSession, getBeatDialogue } from "./apiClient";
 
 /**
  * One tea room, 8-beat main path (gaze + dialogue + fact cards).
@@ -32,6 +33,7 @@ export class RoomScene extends Phaser.Scene {
   private step: StoryStep = "arrival";
   private busy = false;
   private mainIndex = 0;
+  private serverMainIndex = 0;
 
   constructor() {
     super("RoomScene");
@@ -69,25 +71,48 @@ export class RoomScene extends Phaser.Scene {
       this.gazeTween?.stop();
     });
 
-    this.time.delayedCall(700, () => this.showStep("arrival"));
+    startSession()
+      .then((session) => {
+        this.serverMainIndex = session.mainIndex;
+      })
+      .catch(() => {
+        this.serverMainIndex = 0;
+      })
+      .finally(() => {
+        this.time.delayedCall(700, () => this.showStep("arrival"));
+      });
   }
 
   // --- Story ---------------------------------------------------------------
 
-  private showStep(step: StoryStep): void {
+  private showStep(step: StoryStep, choice?: string): void {
     this.step = step;
-    this.busy = false;
+    this.busy = true;
     const d = DIALOGUE[step];
     this.setGaze(d.gaze ?? "none");
 
-    this.game.events.emit("ui:dialogue", {
-      speaker: d.speaker ?? "小伴",
-      beat: d.beat,
-      beatTotal: d.beat != null ? 8 : undefined,
-      text: d.text,
-      fact: d.fact,
-      choices: d.choices,
-    });
+    getBeatDialogue(step, choice)
+      .then((response) => {
+        this.busy = false;
+        this.game.events.emit("ui:dialogue", {
+          speaker: d.speaker ?? "小伴",
+          beat: d.beat,
+          beatTotal: d.beat != null ? 8 : undefined,
+          text: response.text,
+          fact: response.fact,
+          choices: d.choices,
+        });
+      })
+      .catch((error: Error) => {
+        this.busy = false;
+        this.game.events.emit("ui:dialogue", {
+          speaker: d.speaker ?? "小伴",
+          beat: d.beat,
+          beatTotal: d.beat != null ? 8 : undefined,
+          text: error.message,
+          choices: d.choices,
+        });
+      });
   }
 
   private onChoice = (id: string) => {
@@ -95,59 +120,59 @@ export class RoomScene extends Phaser.Scene {
 
     if (this.step === "arrival") {
       if (id === "sit") {
-        this.showStep("sit_reply");
+        this.showStep("sit_reply", id);
         return;
       }
       if (id === "look") {
-        this.mainIndex = 0;
-        this.showStep(MAIN_ORDER[0]);
+        this.mainIndex = this.serverMainIndex;
+        this.showStep(MAIN_ORDER[this.mainIndex], id);
         return;
       }
     }
 
     if (this.step === "sit_reply" && id === "quiet") {
-      this.enterQuietThen(() => this.showStep("diary"));
+      this.enterQuietThen(() => this.showStep("diary", id));
       return;
     }
 
     // Main path linear continues
     if (id === "next") {
-      this.advanceMain();
+      this.advanceMain(id);
       return;
     }
 
     // Reflect four options — all land on diary
     if (this.step === "reflect") {
-      this.showStep("diary");
+      this.showStep("diary", id);
       return;
     }
 
     if (this.step === "diary" && id === "leave") {
-      this.enterQuietThen(() => this.showStep("rest"));
+      this.enterQuietThen(() => this.showStep("rest", id));
       return;
     }
 
     if (this.step === "rest") {
       if (id === "again") {
         this.mainIndex = 0;
-        this.showStep("arrival");
+        this.showStep("arrival", id);
         return;
       }
       if (id === "sit_again") {
-        this.showStep("sit_reply");
+        this.showStep("sit_reply", id);
       }
     }
   };
 
-  private advanceMain(): void {
+  private advanceMain(choice: string): void {
     const i = MAIN_ORDER.indexOf(this.step as (typeof MAIN_ORDER)[number]);
     if (i < 0) return;
     if (i >= MAIN_ORDER.length - 1) {
-      this.showStep("rest");
+      this.showStep("rest", choice);
       return;
     }
     this.mainIndex = i + 1;
-    this.showStep(MAIN_ORDER[this.mainIndex]);
+    this.showStep(MAIN_ORDER[this.mainIndex], choice);
   }
 
   private enterQuietThen(then: () => void): void {
