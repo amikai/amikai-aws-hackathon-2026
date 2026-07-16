@@ -17,6 +17,67 @@ describe("GET /ping", () => {
   });
 });
 
+describe("shared-secret protection", () => {
+  it("does not require the header when appSecret is unset", async () => {
+    const dataset = loadFixtureDataset();
+    const app = createApp({ dataset, doc: new FakeDocClient(), bedrock: fakeBedrockClient("hi") });
+
+    const response = await request(app).post("/api/session/start").send({});
+
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects /api/* requests missing or with the wrong X-App-Secret header", async () => {
+    const dataset = loadFixtureDataset();
+    const app = createApp({
+      dataset,
+      doc: new FakeDocClient(),
+      bedrock: fakeBedrockClient("hi"),
+      appSecret: "correct-secret",
+    });
+
+    const missing = await request(app).post("/api/session/start").send({});
+    expect(missing.status).toBe(403);
+
+    const wrong = await request(app)
+      .post("/api/session/start")
+      .set("X-App-Secret", "wrong-secret")
+      .send({});
+    expect(wrong.status).toBe(403);
+  });
+
+  it("allows /api/* requests with the correct X-App-Secret header", async () => {
+    const dataset = loadFixtureDataset();
+    const app = createApp({
+      dataset,
+      doc: new FakeDocClient(),
+      bedrock: fakeBedrockClient("hi"),
+      appSecret: "correct-secret",
+    });
+
+    const response = await request(app)
+      .post("/api/session/start")
+      .set("X-App-Secret", "correct-secret")
+      .send({});
+
+    expect(response.status).toBe(200);
+  });
+
+  it("never requires the header on /ping", async () => {
+    const dataset = loadFixtureDataset();
+    const app = createApp({
+      dataset,
+      doc: new FakeDocClient(),
+      bedrock: fakeBedrockClient("hi"),
+      appSecret: "correct-secret",
+    });
+
+    const response = await request(app).get("/ping");
+
+    expect(response.status).toBe(200);
+  });
+});
+
 describe("POST /api/session/start", () => {
   it("returns a date from the available dataset, mainIndex 0, and visitCount 1 on first visit", async () => {
     const dataset = loadFixtureDataset();

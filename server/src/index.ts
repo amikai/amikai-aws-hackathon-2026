@@ -15,7 +15,7 @@ const dataset = loadCsvDataFromDir(DATA_DIR);
 const doc = createDocClient(REGION);
 const bedrock = createBedrockClient(REGION);
 
-const app = createApp({ dataset, doc, bedrock });
+const app = createApp({ dataset, doc, bedrock, appSecret: process.env.APP_SECRET });
 
 app.listen(PORT, () => {
   console.log(`StockMate server listening on http://localhost:${PORT}`);

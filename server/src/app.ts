@@ -14,10 +14,12 @@ export interface AppDependencies {
   dataset: CsvDataset;
   doc: DocClientLike;
   bedrock: InvokeClientLike;
+  /** Shared-secret header value required on /api/* routes. Unset = no check (local dev/tests). */
+  appSecret?: string;
 }
 
 export function createApp(deps: AppDependencies) {
-  const { dataset, doc, bedrock } = deps;
+  const { dataset, doc, bedrock, appSecret } = deps;
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -25,6 +27,16 @@ export function createApp(deps: AppDependencies) {
   app.get("/ping", (_req, res) => {
     res.status(200).send("ok");
   });
+
+  if (appSecret) {
+    app.use("/api", (req, res, next) => {
+      if (req.header("X-App-Secret") !== appSecret) {
+        res.status(403).json({ error: "連線失敗，請確認後端伺服器" });
+        return;
+      }
+      next();
+    });
+  }
 
   app.post("/api/session/start", async (_req, res) => {
     try {

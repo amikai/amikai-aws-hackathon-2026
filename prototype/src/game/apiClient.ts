@@ -1,6 +1,7 @@
 import type { FactBlock } from "./story";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+const APP_SECRET = import.meta.env.VITE_APP_SECRET;
 
 export interface SessionStartResponse {
   currentDate: string;
@@ -14,9 +15,13 @@ export interface BeatResponse {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (APP_SECRET) {
+    headers["X-App-Secret"] = APP_SECRET;
+  }
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   if (!response.ok) {
